@@ -1,0 +1,5 @@
+name: ddd_2019_push_notifications
+type: module
+description: DDD 2019 Push Notification
+core: 8.x
+package: ddd2019

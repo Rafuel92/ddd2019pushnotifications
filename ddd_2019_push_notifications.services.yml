@@ -1,0 +1,4 @@
+services:
+  ddd_2019_push_notifications.handler:
+    class: Drupal\ddd_2019_push_notifications\Handler
+    arguments: ['@database', '@config.factory', '@queue']

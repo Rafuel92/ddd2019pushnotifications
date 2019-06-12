@@ -1,0 +1,7 @@
+ddd_2019_push_notifications.save_subscriptions:
+  path: 'rest/web-notification-subscription'
+  defaults:
+    _controller: '\Drupal\ddd_2019_push_notifications\Controller\RestAPIController::saveSubscription'
+  methods:  [POST]
+  requirements:
+    _access: 'TRUE'

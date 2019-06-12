@@ -1,0 +1,98 @@
+<?php
+/**
+ * @file
+ * Contains ddd_2019_push_notifications.module.
+ */
+
+use Drupal\Core\Url;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+require_once('src/ss-ga.class.php');
+
+/**
+ * Implements hook_help().
+ */
+function ddd_2019_push_notifications_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the ddd_2019_push_notifications module.
+    case 'help.page.ddd_2019_push_notifications':
+      $count = \Drupal::service('ddd_2019_push_notifications.handler')->countSubscribers();
+      $count_notifications = \Drupal::service('ddd_2019_push_notifications.handler')->countPendingNotifications();
+      $chunkNumber = \Drupal::service('ddd_2019_push_notifications.handler')->chunkNumber();
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Gestione della funzionalità: Push notifications. Numero subscribers: @count, Numero di invio notifiche pending, circa: @count_notifications
+      (viene diviso a chunk da: @chunkNumber).', [
+        '@count' => $count,
+        '@count_notifications' => $count_notifications,
+        '@chunkNumber' => $chunkNumber
+        ]) . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function ddd_2019_push_notifications_form_node_push_notification_edit_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+  // Remove buttons submit and delete on node content notification edit form.
+	$node_type = $form_state->getFormObject()->getEntity()->getType();
+	$before_status = $form_state->getFormObject()->getEntity()->isPublished();
+	
+	if($node_type=='push_notification' && $before_status==true){
+		$form['actions']['submit'] = null;
+		$form['actions']['delete'] = null; 
+	}	
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function ddd_2019_push_notifications_node_update(\Drupal\Core\Entity\EntityInterface $node){
+	if($node->getType()=='push_notification') {
+    $status = $node->status->value;
+		$status_before = $node->original->status->value;
+
+		if($status && !$status_before){
+      \Drupal::service('ddd_2019_push_notifications.handler')->send($node);
+		}
+	}		
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function ddd_2019_push_notifications_node_insert(\Drupal\Core\Entity\EntityInterface $node) {
+	if($node->getType() === 'push_notification') {
+		$status = $node->status->value;
+		if($status){
+      \Drupal::service('ddd_2019_push_notifications.handler')->send($node);
+		}
+	}		
+}
+
+/**
+ * Implements hook_preprocess_html().
+ */
+function ddd_2019_push_notifications_preprocess_html(&$variables) {
+  // Cmb status.
+  $variables['#attached']['drupalSettings']['pushNotificationsSubscriberRestPath'] = Url::fromRoute('ddd_2019_push_notifications.save_subscriptions')->toString();
+  $variables['#attached']['drupalSettings']['pushNotificationsAnalyticsId'] = \Drupal::config('ddd_2019_push_notifications')->get('analytics_id');
+}
+
+/**
+ * Implements hook_page_attachments_alter().
+ */
+function ddd_2019_push_notifications_page_attachments_alter(array &$page) {
+  // Variables.
+  $routeName = \Drupal::routeMatch()->getRouteName();
+  $route = \Drupal::routeMatch()->getRouteObject();
+  $isAdmin = \Drupal::service('router.admin_context')->isAdminRoute($route);
+
+  // Add library register-service-worker.
+  if (!$isAdmin) {
+    $page['#attached']['library'][] = 'ddd_2019_push_notifications/register-service-worker';
+  }
+}
